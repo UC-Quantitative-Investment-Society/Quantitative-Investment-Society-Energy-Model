@@ -17,7 +17,7 @@ stays reproducible. The docstring in `generate.py` lists the design.
 
 ## prices.csv
 
-Daily closes, business days 2019-01-02 to 2023-12-29.
+Daily closes, business days 2019-01-02 to 2026-06-30.
 
 | column | description | example |
 |--------|-------------|---------|

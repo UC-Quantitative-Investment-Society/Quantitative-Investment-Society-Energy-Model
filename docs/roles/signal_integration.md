@@ -88,9 +88,9 @@ Sample rows from `data["inventory"]`:
 
 | date | actual_change_mbbl | expected_change_mbbl | surprise | fires |
 |------|--------------------|----------------------|----------|-------|
-| 2019-01-09 | -2.6 | -3.1 | +0.5 | no |
-| 2019-04-24 | -2.0 | +0.4 | -2.4 | yes |
-| 2019-05-22 | -4.8 | -1.0 | -3.8 | yes |
+| 2019-01-09 | +0.4 | -3.0 | +3.4 | no |
+| 2019-01-16 | -1.1 | +2.5 | -3.6 | yes |
+| 2019-01-30 | +3.8 | +5.6 | -1.8 | no (not <= -2.0) |
 
 `signals/oil_inventory_surprise.py`:
 
@@ -129,7 +129,7 @@ Sanity check:
 ```bash
 python -c "from backtesting.engine import load_sample_data; from signals import ACTIVE_SIGNALS; \
 s = ACTIVE_SIGNALS['oil_inventory_surprise'](load_sample_data()); print(s.sum())"
-# 45
+# 79
 ```
 
 ## 6. Definition of done

@@ -27,7 +27,7 @@ import pandas as pd
 
 SEED = 42
 START = "2019-01-02"
-END = "2023-12-29"
+END = "2026-06-30"
 OUT_DIR = Path(__file__).resolve().parent
 
 XLE_START, XOM_START, WTI_START = 56.12, 61.71, 46.54

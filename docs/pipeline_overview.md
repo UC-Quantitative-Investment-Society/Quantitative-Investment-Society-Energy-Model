@@ -17,8 +17,8 @@ Every signal passes through the same five stages in order. No stage is skipped.
 - **Research** sets the signal spec: condition, threshold, instrument, direction, hold period.
 - **Engineering** sets the testing standards in `backtesting/config.py`, identical for every signal:
   - benchmark: XLE
-  - test window: 2019-01-01 to 2023-12-31
-  - out-of-sample from 2022-07-01
+  - test window: 2019-01-01 to 2026-06-30
+  - out-of-sample from 2025-01-01
   - costs: 5 bps per side
   - minimum fires: 30
   - suspicious Sharpe threshold: 3.0
@@ -81,21 +81,22 @@ standards from `backtesting/config.py`, then calls `run_backtest()`.
 Execution timing (no lookahead): signal on date t, entry at the close of the
 first trading day after t, exit `hold_days` later. Sample trade:
 
-- 2019-05-22 (Wed): actual -4.8, consensus -1.0, surprise -3.8. Fires.
-- Entry 2019-05-23 close at $45.04.
-- Exit 2019-05-30 close at $44.82. Net of costs: -0.59%.
+- 2019-01-02 (Wed): actual -4.2, consensus -1.9, surprise -2.3. Fires.
+- Entry 2019-01-03 close at $61.45.
+- Exit 2019-01-10 close at $61.36. Net of costs: -0.25%.
 
 Full-sample results (`backtesting/results/oil_inventory_surprise/stats.json`):
 
 | Metric | Value |
 |--------|-------|
-| n_fires | 45 (min 30) |
-| n_trades | 44 |
-| win rate | 56.8% |
+| comparison | per_trade (XOM is not the benchmark) |
+| n_fires | 79 (min 30) |
+| n_trades | 79 |
+| win rate | 65.8% |
 | avg excess vs XLE per trade | +1.28% |
-| Sharpe | 0.95 |
-| max drawdown | -15.1% |
-| out-of-sample (from 2022-07-01) | 14 fires, 61.5% win rate, +1.44% per trade |
+| Sharpe | 1.02 |
+| max drawdown | -15.9% |
+| out-of-sample (from 2025-01-01) | 14 fires, 78.6% win rate, +1.47% per trade |
 | verdict | PASS |
 
 Plus `equity_curve.png` (strategy vs XLE). Backtesting reviews per
@@ -109,8 +110,8 @@ No live runner exists yet (see `README.md`), so fires are checked manually.
 On a fire, with a $1,000,000 paper account:
 
 ```python
-size_order(1_000_000, 45.04)   # 5% cap = $50,000 -> 1110 shares
-submit_market_order("XOM", 1110, "buy", start_of_day_equity=1_000_000, current_equity=998_500)
+size_order(1_000_000, 61.45)   # 5% cap = $50,000 -> 813 shares
+submit_market_order("XOM", 813, "buy", start_of_day_equity=1_000_000, current_equity=998_500)
 ```
 
 `orders.py` enforces the paper endpoint and the 2% daily loss halt before
@@ -119,6 +120,6 @@ sending. Exit after 5 trading days with `closing=True` (exits bypass the halt).
 ### Stage 4: reporting
 
 `dashboard/app.py` discovers `backtesting/results/oil_inventory_surprise/stats.json`
-automatically: a summary row (`oil_inventory_surprise | PASS | XOM | 45 | ...`)
+automatically: a summary row (`oil_inventory_surprise | PASS | per_trade | XOM | 79 | ...`)
 and a panel with metrics, the in-sample / out-of-sample split, and the equity
 curve. No dashboard change is needed to add a signal.

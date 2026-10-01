@@ -9,8 +9,8 @@ the standards.
 - `backtesting/engine.py` : the shared engine (`run_backtest`, `save_results`, `load_data`, `signal_params`)
 - `backtesting/config.py` : testing standards, identical for every signal:
   - `BENCHMARK = "XLE"`
-  - `TEST_START`, `TEST_END` : 2019-01-01 to 2023-12-31
-  - `OUT_OF_SAMPLE_START = "2022-07-01"`
+  - `TEST_START`, `TEST_END` : 2019-01-01 to 2026-06-30
+  - `OUT_OF_SAMPLE_START = "2025-01-01"`
   - `COST_BPS = 5` (per side)
   - `MIN_FIRES = 30`
   - `SUSPICIOUS_SHARPE = 3.0`
@@ -33,7 +33,7 @@ From **Signal Integration**: a signal merged to `main`, registered in
 - **Execution & Risk**: the verdict (`PASS`, `REJECT`, `REVIEW`). Only `PASS` is traded.
 - **Front-End & Reporting**: `backtesting/results/<signal_name>/`. Git-ignored,
   so handed off as a reproducible run: `python -m backtesting.engine` on `main`.
-- **Research**: a written summary, e.g. "oil_inventory_surprise: PASS, 45 fires,
+- **Research**: a written summary, e.g. "oil_inventory_surprise: PASS, 79 fires,
   +1.28% excess vs XLE per trade, holds out-of-sample."
 
 ## 4. Step-by-step: one new signal
@@ -64,7 +64,7 @@ sides at 5 bps) on every trade and `per_trade` would reject every such signal.
 The summary line shows the figures the verdict used. Timing example:
 
 ```
-xle_trend: verdict=REJECT comparison=timing n_fires=820 n_trades=410 win_rate=51.2% sharpe=0.31 is_sharpe=0.28 vs XLE 0.35 oos_sharpe=0.40 vs XLE 0.52
+xle_trend: verdict=REJECT comparison=timing n_fires=820 n_trades=164 win_rate=51.2% sharpe=0.31 is_sharpe=0.28 vs XLE 0.35 oos_sharpe=0.40 vs XLE 0.52
 ```
 
 (Illustrative numbers.) `MIN_FIRES` and the `SUSPICIOUS_SHARPE` REVIEW check are the same in both modes.
@@ -73,15 +73,15 @@ xle_trend: verdict=REJECT comparison=timing n_fires=820 n_trades=410 win_rate=51
 
 | Field | Definition | Example |
 |-------|------------|---------|
-| `n_fires` | signal dates in the test window | 45 |
-| `n_trades` | trades taken (fires during an open trade are not re-entered) | 44 |
-| `win_rate` | share of trades with positive net return | 0.568 |
-| `total_return` / `benchmark_return` | strategy vs XLE buy-and-hold over the window | +78.5% / -56.7% |
+| `n_fires` | signal dates in the test window | 79 |
+| `n_trades` | trades taken (fires during an open trade are not re-entered) | 79 |
+| `win_rate` | share of trades with positive net return | 0.658 |
+| `total_return` / `benchmark_return` | strategy vs XLE buy-and-hold over the window | +182.3% / -71.1% |
 | `comparison` | `per_trade` or `timing` (see Comparison modes) | `per_trade` |
 | `avg_excess_vs_benchmark` | mean per-trade net return minus XLE over the same holding window | +1.28% |
-| `sharpe` | annualized, daily returns, rf = 0 | 0.95 |
+| `sharpe` | annualized, daily returns, rf = 0 | 1.02 |
 | `benchmark_sharpe` | XLE buy and hold over the same dates, same method | -0.55 |
-| `max_drawdown` | peak to trough on the strategy equity curve | -15.1% |
+| `max_drawdown` | peak to trough on the strategy equity curve | -15.9% |
 | `in_sample`, `out_of_sample` | the same stats split at `OUT_OF_SAMPLE_START` | |
 
 ### Execution assumptions
@@ -100,32 +100,33 @@ Never overwrite a prior version's results; the number of variants tried must sta
 
 ```bash
 python -m backtesting.engine
-# oil_inventory_surprise: verdict=PASS n_fires=45 n_trades=44 win_rate=56.8% sharpe=0.95
-#   avg_excess_vs_XLE=1.28% oos_avg_excess=1.44%
+# oil_inventory_surprise: verdict=PASS comparison=per_trade n_fires=79 n_trades=79 win_rate=65.8%
+#   sharpe=1.02 avg_excess_vs_XLE=1.28% oos_avg_excess=1.47%
 ```
 
 Equivalent call:
 
 ```python
 run_backtest(oil_inventory_surprise.compute_signal, data, ticker="XOM", hold_days=5,
-             benchmark="XLE", cost_bps=5, out_of_sample_start="2022-07-01", direction="long")
+             benchmark="XLE", cost_bps=5, out_of_sample_start="2025-01-01", direction="long")
 ```
 
 | | Full | In-sample | Out-of-sample |
 |--|------|-----------|---------------|
-| n_fires | 45 | 31 | 14 |
-| n_trades | 44 | 31 | 13 |
-| win rate | 56.8% | 54.8% | 61.5% |
-| avg excess vs XLE per trade | +1.28% | +1.21% | +1.44% |
-| Sharpe | 0.95 | 0.90 | 1.06 |
+| n_fires | 79 | 65 | 14 |
+| n_trades | 79 | 65 | 14 |
+| win rate | 65.8% | 63.1% | 78.6% |
+| avg excess vs XLE per trade | +1.28% | +1.24% | +1.47% |
+| Sharpe | 1.02 | 1.00 | 1.13 |
 
-45 fires vs 44 trades: the 2023-12-27 fire has fewer than 5 trading days of data remaining.
+79 fires, 79 trades: no fire landed during an open trade, and the last fire
+(2026-06-17) still has 5 trading days of data before 2026-06-30.
 
-Verdict: **PASS**. Sufficient fires, positive excess in both periods, plausible Sharpe. (Synthetic data.)
+Verdict: **PASS**. Comparison `per_trade` (XOM vs XLE). Sufficient fires, positive excess in both periods, plausible Sharpe. (Synthetic data.)
 
 ### Reference readings
 
-**Clear pass** (above): 45 fires, +1.28% excess per trade, +1.44% out-of-sample, Sharpe 0.95.
+**Clear pass** (above): 79 fires, +1.28% excess per trade, +1.47% out-of-sample, Sharpe 1.02.
 
 **Noise** (illustrative): 60 fires, 50.0% win rate, excess +0.02% in-sample and
 -0.10% out-of-sample, Sharpe 0.05. No edge, and it fails out-of-sample. REJECT.

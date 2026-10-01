@@ -10,10 +10,10 @@ BENCHMARK = "XLE"
 
 # Full test window (inclusive). Data outside this window is ignored.
 TEST_START = "2019-01-01"
-TEST_END = "2023-12-31"
+TEST_END = "2026-06-30"
 
 # Out-of-sample holdout starts here (inclusive). Not used during signal research.
-OUT_OF_SAMPLE_START = "2022-07-01"
+OUT_OF_SAMPLE_START = "2025-01-01"
 
 # Cost per side in basis points (charged on entry and on exit).
 COST_BPS = 5
