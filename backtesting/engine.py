@@ -8,7 +8,8 @@ To use real prices downloaded from Alpaca (see backtesting/alpaca_data.py):
 
     python -m backtesting.engine --data raw
 
-That runs every signal in signals.ACTIVE_SIGNALS and writes, per signal:
+That runs every trade signal in signals.ACTIVE_SIGNALS (filters are skipped,
+see signal_role) and writes, per signal:
     backtesting/results/<signal_name>/stats.json
     backtesting/results/<signal_name>/equity_curve.png
 
@@ -76,6 +77,21 @@ def signal_params(signal_fn) -> dict:
     if not isinstance(hold_days, int) or hold_days < 1:
         raise ValueError(f"{name}: HOLD_DAYS must be a whole number of trading days >= 1, got {hold_days!r}")
     return {"ticker": ticker, "direction": direction, "hold_days": hold_days}
+
+
+def signal_role(signal_fn) -> str:
+    """Read ROLE from the signal's module: "trade" (the default) or "filter".
+
+    A trade signal is backtested on its own. A filter only switches trade signals
+    on and off, so the engine never trades it alone and it needs no INSTRUMENT,
+    DIRECTION or HOLD_DAYS.
+    Example: a VIX filter module sets ROLE = "filter" and returns True on days VIX < 30.
+    """
+    module = sys.modules[signal_fn.__module__]
+    role = getattr(module, "ROLE", "trade")
+    if role not in ("trade", "filter"):
+        raise ValueError(f"{signal_fn.__module__}: ROLE must be 'trade' or 'filter', got {role!r}")
+    return role
 
 
 def _fires_from_signal(signal: pd.Series) -> pd.Series:
@@ -307,6 +323,10 @@ def main() -> None:
 
     data = _clip_to_test_window(load_data(args.data))
     for name, signal_fn in ACTIVE_SIGNALS.items():
+        if signal_role(signal_fn) == "filter":
+            # Tested through the trade signals that apply it, never on its own.
+            print(f"{name}: filter, not traded alone")
+            continue
         params = signal_params(signal_fn)  # INSTRUMENT, DIRECTION, HOLD_DAYS from the handoff sheet
         try:
             result = run_backtest(

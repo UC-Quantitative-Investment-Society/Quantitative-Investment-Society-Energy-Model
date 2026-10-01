@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from backtesting.engine import load_sample_data, signal_params
+from backtesting.engine import load_sample_data, signal_params, signal_role
 from signals import ACTIVE_SIGNALS
 
 
@@ -35,7 +35,13 @@ def test_signal_docstring_states_output_type(name):
 
 
 @pytest.mark.parametrize("name", sorted(ACTIVE_SIGNALS))
-def test_signal_has_handoff_parameters(name):
-    # INSTRUMENT, DIRECTION, HOLD_DAYS must be filled in (not template placeholders)
-    params = signal_params(ACTIVE_SIGNALS[name])
-    assert params["hold_days"] >= 1
+def test_signal_has_handoff_parameters(name, data):
+    signal_fn = ACTIVE_SIGNALS[name]
+    if signal_role(signal_fn) == "filter":
+        # A filter is never traded alone, so it has no INSTRUMENT, DIRECTION or HOLD_DAYS.
+        # It must say True (OK to trade) or False on every date.
+        assert signal_fn(data).dtype == bool, f"{name} is a filter and must return bool"
+    else:
+        # INSTRUMENT, DIRECTION, HOLD_DAYS must be filled in (not template placeholders)
+        params = signal_params(signal_fn)
+        assert params["hold_days"] >= 1

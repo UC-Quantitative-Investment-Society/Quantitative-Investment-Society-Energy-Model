@@ -50,6 +50,36 @@ To **Backtesting**: a merged PR where
 
 The engine treats score > 0 as a fire, so the threshold lives inside the function.
 
+### Trade signals and filters
+
+Each module sets `ROLE`. A module without it is a trade signal.
+
+| `ROLE` | What it does | Needs `INSTRUMENT`, `DIRECTION`, `HOLD_DAYS` | Output | Example |
+|--------|--------------|----------------------------------------------|--------|---------|
+| `"trade"` | backtested and traded on its own | yes | bool or score | XLE closes above its 200-day average |
+| `"filter"` | switches trade signals on and off; never traded alone | no | bool, True = OK to trade | VIX below 30 |
+
+`python -m backtesting.engine` skips filters and prints, for example,
+`vix_filter: filter, not traded alone`. Register a filter in `ACTIVE_SIGNALS`
+like any other module so `tests/test_signals.py` checks it returns bool.
+
+A filter only has an effect once a trade signal applies it, as its handoff
+sheet specifies. The trade signal imports the filter and combines the two:
+
+```python
+from signals import vix_filter
+
+def compute_signal(data: dict) -> pd.Series:
+    """... Output type: bool."""
+    xle_trend_fires = ...  # this signal's own bool Series, built from its handoff sheet
+    ok_to_trade = vix_filter.compute_signal(data).reindex(xle_trend_fires.index, fill_value=False)
+    return (xle_trend_fires & ok_to_trade).astype(bool)
+```
+
+`fill_value=False`: a date with no filter value is a date we do not trade.
+Applying a filter changes the trade signal's spec, so it needs a new handoff
+sheet and a new version (`xle_trend_v2`), not an edit to the existing module.
+
 ## 5. Worked example: oil inventory surprise
 
 Spec: fire when actual minus consensus <= -2.0 mbbl; XOM, long, 5 days, bool.

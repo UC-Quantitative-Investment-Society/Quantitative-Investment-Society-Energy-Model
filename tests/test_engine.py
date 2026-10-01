@@ -1,5 +1,8 @@
 """The shared engine must avoid lookahead, apply costs, and count fires."""
 
+import sys
+import types
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -116,3 +119,23 @@ def test_oil_example_still_per_trade_and_passes():
                          direction=oil.DIRECTION)["stats"]
     assert stats["comparison"] == "per_trade"
     assert stats["verdict"] == "PASS"
+
+
+def test_filters_are_not_traded_alone(monkeypatch, tmp_path, capsys):
+    import signals
+    from backtesting import config, engine
+
+    def vix_below_30(data):
+        """Output type: bool."""
+        return data["vix"]["vix"] < 30
+
+    # A stand-in module with ROLE = "filter" and no INSTRUMENT, DIRECTION or HOLD_DAYS.
+    vix_below_30.__module__ = "fake_vix_filter"
+    monkeypatch.setitem(sys.modules, "fake_vix_filter", types.SimpleNamespace(ROLE="filter"))
+    monkeypatch.setattr(signals, "ACTIVE_SIGNALS", {"fake_vix_filter": vix_below_30})
+    monkeypatch.setattr(config, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(sys, "argv", ["engine"])
+
+    engine.main()
+    assert "fake_vix_filter: filter, not traded alone" in capsys.readouterr().out
+    assert not any(tmp_path.iterdir()), "a filter must not get a results folder"
