@@ -40,10 +40,31 @@ From **Signal Integration**: a signal merged to `main`, registered in
 3. Review `stats.json` and `equity_curve.png`.
 4. Confirm the verdict logic:
    - `n_fires < MIN_FIRES`: **REJECT**
-   - avg excess vs XLE per trade not positive both in-sample and out-of-sample: **REJECT**
+   - does not beat XLE both in-sample and out-of-sample, under the signal's comparison mode (below): **REJECT**
    - Sharpe > `SUSPICIOUS_SHARPE`: **REVIEW** (bug hunt before anything else)
    - otherwise: **PASS**
 5. Post the engine's summary line and your written summary in the signal's PR. That comment is the record of the verdict.
+
+### Comparison modes
+
+The engine picks the mode from the signal's `INSTRUMENT` and records it in `stats["comparison"]`.
+
+| Mode | When | Beats XLE means | Example |
+|------|------|-----------------|---------|
+| `per_trade` | `INSTRUMENT != "XLE"` | `avg_excess_vs_benchmark > 0` in both periods | Long XOM for 5 days nets +1.8% while XLE moves +0.5%: that trade's excess is +1.3%. |
+| `timing` | `INSTRUMENT == "XLE"` | strategy Sharpe > XLE buy-and-hold Sharpe over the same dates, in both periods | XLE trend signal: in-sample 0.62 vs 0.48, out-of-sample 0.71 vs 0.55. Beats XLE. |
+
+Why `timing` exists: when the signal trades XLE itself, each trade's excess is
+the XLE move minus the same XLE move minus costs, so it is exactly -0.10% (two
+sides at 5 bps) on every trade and `per_trade` would reject every such signal.
+
+The summary line shows the figures the verdict used. Timing example:
+
+```
+xle_trend: verdict=REJECT comparison=timing n_fires=820 n_trades=410 win_rate=51.2% sharpe=0.31 is_sharpe=0.28 vs XLE 0.35 oos_sharpe=0.40 vs XLE 0.52
+```
+
+(Illustrative numbers.) `MIN_FIRES` and the `SUSPICIOUS_SHARPE` REVIEW check are the same in both modes.
 
 ### Reported metrics
 
@@ -53,8 +74,10 @@ From **Signal Integration**: a signal merged to `main`, registered in
 | `n_trades` | trades taken (fires during an open trade are not re-entered) | 44 |
 | `win_rate` | share of trades with positive net return | 0.568 |
 | `total_return` / `benchmark_return` | strategy vs XLE buy-and-hold over the window | +78.5% / -56.7% |
+| `comparison` | `per_trade` or `timing` (see Comparison modes) | `per_trade` |
 | `avg_excess_vs_benchmark` | mean per-trade net return minus XLE over the same holding window | +1.28% |
 | `sharpe` | annualized, daily returns, rf = 0 | 0.95 |
+| `benchmark_sharpe` | XLE buy and hold over the same dates, same method | -0.55 |
 | `max_drawdown` | peak to trough on the strategy equity curve | -15.1% |
 | `in_sample`, `out_of_sample` | the same stats split at `OUT_OF_SAMPLE_START` | |
 

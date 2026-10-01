@@ -1,9 +1,10 @@
 """The shared engine must avoid lookahead, apply costs, and count fires."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from backtesting.engine import run_backtest, signal_params
+from backtesting.engine import _clip_to_test_window, load_sample_data, run_backtest, signal_params
 
 DATES = pd.bdate_range("2024-01-01", periods=10)
 # Day 2 is the signal day. The stock jumps +10% ON that day (100 -> 110).
@@ -66,3 +67,52 @@ def test_template_placeholders_are_refused():
 
     with pytest.raises(ValueError, match="INSTRUMENT"):
         signal_params(_template.compute_signal)
+
+
+# Comparison modes. A signal that trades the benchmark itself is judged on Sharpe
+# vs benchmark buy and hold ("timing"), never on per-trade excess, which would be
+# exactly minus the round-trip cost on every trade.
+
+XLE_DATES = pd.bdate_range("2020-01-01", periods=300)
+
+
+def make_xle_only_data():
+    rng = np.random.default_rng(0)
+    xle = 50 * np.exp(np.cumsum(rng.normal(0.0003, 0.015, len(XLE_DATES))))
+    return {"prices": pd.DataFrame({"XLE": xle}, index=XLE_DATES)}
+
+
+def run_on_xle(signal_fn):
+    return run_backtest(signal_fn, make_xle_only_data(), ticker="XLE", hold_days=1, benchmark="XLE",
+                        cost_bps=5, out_of_sample_start=str(XLE_DATES[200].date()))
+
+
+def test_signal_trading_the_benchmark_uses_timing():
+    def fires_on_mondays(data):
+        """Output type: bool."""
+        return pd.Series(XLE_DATES.dayofweek == 0, index=XLE_DATES)
+
+    assert run_on_xle(fires_on_mondays)["stats"]["comparison"] == "timing"
+
+
+def test_always_long_benchmark_is_not_pass():
+    # Fires every day, so the strategy is XLE buy and hold minus costs and cannot beat it.
+    def fires_every_day(data):
+        """Output type: bool."""
+        return pd.Series(True, index=XLE_DATES)
+
+    stats = run_on_xle(fires_every_day)["stats"]
+    assert stats["n_fires"] >= stats["min_fires"]
+    assert stats["in_sample"]["sharpe"] < stats["in_sample"]["benchmark_sharpe"]
+    assert stats["out_of_sample"]["sharpe"] < stats["out_of_sample"]["benchmark_sharpe"]
+    assert stats["verdict"] == "REJECT"
+
+
+def test_oil_example_still_per_trade_and_passes():
+    from signals import oil_inventory_surprise as oil
+
+    data = _clip_to_test_window(load_sample_data())
+    stats = run_backtest(oil.compute_signal, data, ticker=oil.INSTRUMENT, hold_days=oil.HOLD_DAYS,
+                         direction=oil.DIRECTION)["stats"]
+    assert stats["comparison"] == "per_trade"
+    assert stats["verdict"] == "PASS"
