@@ -17,8 +17,11 @@ the standards.
 - `backtesting/alpaca_data.py` : adjusted daily closes from Alpaca into
   `data/raw/prices.csv`; use with `python -m backtesting.engine --data raw`.
   Signals needing tables absent from `data/raw/` are skipped.
+- `backtesting/fred_data.py` : daily WTI (`DCOILWTICO`) and VIX (`VIXCLS`) from
+  FRED into `data/raw/wti.csv` and `data/raw/vix.csv`. No key needed.
+- `data/sample/generate.py` : the seeded generator for every synthetic file in `data/sample/`
 - `backtesting/results/<signal_name>/` : `stats.json`, `equity_curve.png` (git-ignored)
-- `tests/test_engine.py`, `tests/test_alpaca_data.py`
+- `tests/test_engine.py`, `tests/test_alpaca_data.py`, `tests/test_fred_data.py`
 
 ## 2. What you receive, and from whom
 

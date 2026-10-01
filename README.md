@@ -42,10 +42,10 @@ End-to-end walkthrough: `docs/pipeline_overview.md`. Role guides: `docs/roles/`.
 | Folder         | Contents                                                           | Owner                 |
 | -------------- | ------------------------------------------------------------------ | --------------------- |
 | `signals/`     | one module per signal, `ACTIVE_SIGNALS` registry, `_template.py`   | Signal Integration    |
-| `backtesting/` | shared engine, testing standards, Alpaca price downloader, results | Backtesting           |
+| `backtesting/` | shared engine, testing standards, Alpaca and FRED downloaders, results | Backtesting           |
 | `execution/`   | position sizing, daily loss halt, paper-only Alpaca order wrapper  | Execution & Risk      |
 | `dashboard/`   | Streamlit dashboard                                                | Front-End & Reporting |
-| `data/sample/` | synthetic prices and inventory                                     | read only             |
+| `data/sample/` | synthetic prices, inventory, WTI, VIX, and their seeded generator  | read only             |
 | `docs/`        | pipeline overview, handoff template, role guides                   | all                   |
 | `tests/`       | pytest suite                                                       | all                   |
 
@@ -84,6 +84,24 @@ Writes split- and dividend-adjusted daily closes to `data/raw/prices.csv` in the
 same layout as the sample file. In `--data raw` mode, signals that need a table
 not present in `data/raw/` (e.g. `inventory`) are skipped. Real and synthetic
 data are never mixed.
+
+### WTI and VIX from FRED
+
+```bash
+python -m backtesting.fred_data                                     # WTI and VIX over the config test window
+python -m backtesting.fred_data --series VIXCLS --start 2018-01-01
+```
+
+No key needed. Writes `data/raw/wti.csv` (`date,wti`, from `DCOILWTICO`) and
+`data/raw/vix.csv` (`date,vix`, from `VIXCLS`). Days FRED leaves blank
+(holidays) are dropped and counted. Signals read them as `data["wti"]["wti"]`
+and `data["vix"]["vix"]`.
+
+### Sample data
+
+`data/sample/` holds synthetic `prices.csv`, `inventory.csv`, `wti.csv` and
+`vix.csv`, all built by the seeded `data/sample/generate.py`. Columns and
+examples: `data/sample/README.md`.
 
 ## Results are not committed
 
