@@ -1,0 +1,37 @@
+# Code owners are auto-requested for review on PRs that touch their paths.
+# With branch protection's "Require review from Code Owners" enabled, their
+# approval is required to merge. The last matching rule wins.
+#
+# Replace the remaining TODO_ placeholder with the lead's GitHub username
+# before enabling that setting. Placeholders are deliberately invalid usernames.
+
+# Fallback: anything not matched below (README, CONTRIBUTING, shared docs, config files)
+*                                   @morgan-swe
+
+# Signal Integration
+/signals/                           @UOG5
+/tests/test_signals.py              @UOG5
+/docs/roles/signal_integration.md   @UOG5
+
+# Backtesting (engine, testing standards, data)
+/backtesting/                       @TODO_backtesting_lead
+/data/                              @TODO_backtesting_lead
+/tests/test_engine.py               @TODO_backtesting_lead
+/tests/test_alpaca_data.py          @TODO_backtesting_lead
+/docs/roles/backtesting.md          @TODO_backtesting_lead
+
+# Execution & Risk. The paper-only guard and risk limits also need the repo owner.
+/execution/                         @gefferyaddai
+/execution/orders.py                @gefferyaddai @morgan-swe
+/execution/risk.py                  @gefferyaddai @morgan-swe
+/.env.example                       @gefferyaddai @morgan-swe
+/tests/test_risk.py                 @gefferyaddai
+/tests/test_orders.py               @gefferyaddai
+/docs/roles/execution_risk.md       @gefferyaddai
+
+# Front-End & Reporting
+/dashboard/                         @morgan-swe
+/docs/roles/frontend_reporting.md   @morgan-swe
+
+# Code owners can only be changed with the repo owner's approval.
+/.github/CODEOWNERS                 @morgan-swe
