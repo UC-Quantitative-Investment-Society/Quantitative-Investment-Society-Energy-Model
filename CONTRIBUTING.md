@@ -5,10 +5,10 @@
 1. **No direct pushes to `main`.** All changes go through a pull request.
 2. **At least 1 approving review** before merge. No self-approval.
 3. **One signal per PR.** A PR adding `crack_spread.py` must not touch `oil_inventory_surprise.py`.
-4. **Code owner approval.** `.github/CODEOWNERS` auto-requests the role lead for
-   every path a PR touches (e.g. `backtesting/` requests the Backtesting lead).
-   A PR spanning two roles needs both leads. `execution/orders.py`,
-   `execution/risk.py`, and `.env.example` also require the repo owner.
+4. **Code owner approval.** `.github/CODEOWNERS` auto-requests the owning team for
+   every path a PR touches (e.g. `backtesting/` requests the backtesting team).
+   A PR spanning two roles needs an approval from each team. `execution/orders.py`,
+   `execution/risk.py`, and `.env.example` need the execution-risk team or the repo owner.
 
 ## Branches
 
