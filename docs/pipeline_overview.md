@@ -7,10 +7,10 @@ Every signal passes through the same five stages in order. No stage is skipped.
 | Stage | Owner | Input | Output | Files |
 |-------|-------|-------|--------|-------|
 | 0. Spec | Quant research | research | signed handoff sheet | `docs/signal_handoff_template.md` (in the PR) |
-| 1. Implement | Signal Integration (5) | signed sheet | `compute_signal()`, registered in `ACTIVE_SIGNALS` | `signals/<name>.py`, `signals/__init__.py` |
-| 2. Validate | Backtesting (5) | registered signal | `stats.json`, `equity_curve.png`, verdict | `backtesting/engine.py`, `backtesting/config.py`, `backtesting/results/<name>/` |
+| 1. Implement | Signal Integration (6) | signed sheet | `compute_signal()`, registered in `ACTIVE_SIGNALS` | `signals/<name>.py`, `signals/__init__.py` |
+| 2. Validate | Backtesting (6) | registered signal | `stats.json`, `equity_curve.png`, verdict | `backtesting/engine.py`, `backtesting/config.py`, `backtesting/results/<name>/` |
 | 3. Trade | Execution & Risk (3) | PASS verdict | paper orders on Alpaca | `execution/risk.py`, `execution/orders.py` |
-| 4. Report | Front-End & Reporting (3) | result files | dashboard panel | `dashboard/app.py` |
+| 4. Report | Front-End & Reporting (2) | result files | dashboard panel | `dashboard/app.py` |
 
 ## Ownership of parameters
 

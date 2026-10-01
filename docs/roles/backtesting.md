@@ -1,4 +1,4 @@
-# Role: Backtesting (5)
+# Role: Backtesting (6)
 
 Determine, under one fixed set of standards, whether each signal produces
 excess return over XLE after costs, robust out-of-sample. Own the engine and

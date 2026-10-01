@@ -1,4 +1,4 @@
-# Role: Front-End & Reporting (3)
+# Role: Front-End & Reporting (2)
 
 Own the Streamlit dashboard. It presents engine output and never computes metrics.
 

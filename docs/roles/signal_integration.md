@@ -1,4 +1,4 @@
-# Role: Signal Integration (5)
+# Role: Signal Integration (6)
 
 Implement each signed handoff sheet as a signal module, exactly to spec. No
 discretion over parameters.
