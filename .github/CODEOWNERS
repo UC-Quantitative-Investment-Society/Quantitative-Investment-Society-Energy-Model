@@ -1,37 +1,45 @@
-# Code owners are auto-requested for review on PRs that touch their paths.
-# With branch protection's "Require review from Code Owners" enabled, their
-# approval is required to merge. The last matching rule wins.
+# Code owners are auto-requested for review on PRs that touch their paths, and the
+# "protect main" ruleset requires a code owner's approval to merge.
+# The last matching rule wins. Example: a PR that edits signals/xle_trend.py
+# requests @UC-Quantitative-Investment-Society/signal-integration, and one approval
+# from any member of that team satisfies the code owner requirement.
 #
-# Replace the remaining TODO_ placeholder with the lead's GitHub username
-# before enabling that setting. Placeholders are deliberately invalid usernames.
+# The four teams below must exist in the UC-Quantitative-Investment-Society org and
+# have Write access to this repo, or GitHub ignores those lines:
+#   signal-integration, backtesting, execution-risk, frontend-reporting
+#
+# A line with two owners needs approval from either one, not both. GitHub cannot
+# require both on the same path.
 
 # Fallback: anything not matched below (README, CONTRIBUTING, shared docs, config files)
 *                                   @morgan-swe
 
 # Signal Integration
-/signals/                           @UOG5
-/tests/test_signals.py              @UOG5
-/docs/roles/signal_integration.md   @UOG5
+/signals/                           @UC-Quantitative-Investment-Society/signal-integration
+/tests/test_signals.py              @UC-Quantitative-Investment-Society/signal-integration
+/docs/roles/signal_integration.md   @UC-Quantitative-Investment-Society/signal-integration
 
 # Backtesting (engine, testing standards, data)
-/backtesting/                       @TODO_backtesting_lead
-/data/                              @TODO_backtesting_lead
-/tests/test_engine.py               @TODO_backtesting_lead
-/tests/test_alpaca_data.py          @TODO_backtesting_lead
-/docs/roles/backtesting.md          @TODO_backtesting_lead
+/backtesting/                       @UC-Quantitative-Investment-Society/backtesting
+/data/                              @UC-Quantitative-Investment-Society/backtesting
+/tests/test_engine.py               @UC-Quantitative-Investment-Society/backtesting
+/tests/test_alpaca_data.py          @UC-Quantitative-Investment-Society/backtesting
+/tests/test_fred_data.py            @UC-Quantitative-Investment-Society/backtesting
+/docs/roles/backtesting.md          @UC-Quantitative-Investment-Society/backtesting
 
-# Execution & Risk. The paper-only guard and risk limits also need the repo owner.
-/execution/                         @gefferyaddai
-/execution/orders.py                @gefferyaddai @morgan-swe
-/execution/risk.py                  @gefferyaddai @morgan-swe
-/.env.example                       @gefferyaddai @morgan-swe
-/tests/test_risk.py                 @gefferyaddai
-/tests/test_orders.py               @gefferyaddai
-/docs/roles/execution_risk.md       @gefferyaddai
+# Execution & Risk. The paper-only guard, the risk limits and .env.example are also
+# owned by the repo owner, so either the team or @morgan-swe can approve them.
+/execution/                         @UC-Quantitative-Investment-Society/execution-risk
+/execution/orders.py                @UC-Quantitative-Investment-Society/execution-risk @morgan-swe
+/execution/risk.py                  @UC-Quantitative-Investment-Society/execution-risk @morgan-swe
+/.env.example                       @UC-Quantitative-Investment-Society/execution-risk @morgan-swe
+/tests/test_risk.py                 @UC-Quantitative-Investment-Society/execution-risk
+/tests/test_orders.py               @UC-Quantitative-Investment-Society/execution-risk
+/docs/roles/execution_risk.md       @UC-Quantitative-Investment-Society/execution-risk
 
 # Front-End & Reporting
-/dashboard/                         @morgan-swe
-/docs/roles/frontend_reporting.md   @morgan-swe
+/dashboard/                         @UC-Quantitative-Investment-Society/frontend-reporting
+/docs/roles/frontend_reporting.md   @UC-Quantitative-Investment-Society/frontend-reporting
 
 # Code owners can only be changed with the repo owner's approval.
 /.github/CODEOWNERS                 @morgan-swe

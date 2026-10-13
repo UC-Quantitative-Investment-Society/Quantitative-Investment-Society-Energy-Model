@@ -50,7 +50,7 @@ and monitor live performance against the backtest. **Paper only.**
 
 ### Drift monitoring
 
-Review every 10 live trades against the backtest. Example: backtest 56.8% win
+Review every 10 live trades against the backtest. Example: backtest 65.8% win
 rate and +1.42% average trade; live 2 of 10 winners and -1.5% average. Suspend
 the signal and escalate to Backtesting and the quant director. Typical causes:
 data latency vs backtest assumptions, slippage above the 5 bps cost assumption,
@@ -58,13 +58,13 @@ regime change.
 
 ## 5. Worked example: oil inventory surprise
 
-$1,000,000 paper account, verdict `PASS`. Wednesday report fires; Thursday XOM at $45.04.
+$1,000,000 paper account, verdict `PASS`. Wednesday report fires; Thursday XOM at $61.45.
 
 ```python
 from execution.risk import size_order, check_daily_loss_halt
 from execution.orders import submit_market_order
 
-shares = size_order(1_000_000, 45.04)       # $50,000 cap / 45.04 -> 1110 shares (~$49,994)
+shares = size_order(1_000_000, 61.45)       # $50,000 cap / 61.45 -> 813 shares (~$49,959)
 check_daily_loss_halt(1_000_000, 998_500)   # -0.15% -> False
 submit_market_order("XOM", shares, "buy", start_of_day_equity=1_000_000, current_equity=998_500)
 ```
@@ -85,7 +85,7 @@ submit_market_order("CVX", 300, "buy", 1_000_000, 979_000)  # RuntimeError: Dail
 Exit after 5 trading days:
 
 ```python
-submit_market_order("XOM", 1110, "sell", start_of_day_equity=1_000_000,
+submit_market_order("XOM", 813, "sell", start_of_day_equity=1_000_000,
                     current_equity=1_004_000, closing=True)
 ```
 

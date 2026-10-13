@@ -26,6 +26,21 @@ def load_results() -> dict:
     return results
 
 
+def is_timing(s: dict) -> bool:
+    """True when the signal trades the benchmark itself (comparison mode "timing")."""
+    return s.get("comparison", "per_trade") == "timing"
+
+
+def vs_benchmark(s: dict, period: dict) -> str:
+    """The comparison the verdict uses, as text.
+
+    per_trade example: "+1.28% per trade". timing example: "Sharpe 0.62 vs 0.48".
+    """
+    if is_timing(s):
+        return f"Sharpe {period['sharpe']:.2f} vs {period['benchmark_sharpe']:.2f}"
+    return f"{period['avg_excess_vs_benchmark']:+.2%} per trade"
+
+
 st.set_page_config(page_title="QIS Energy Signals", layout="wide")
 st.title("QIS Energy Signals: backtest results")
 st.caption("Data source per signal: sample = synthetic, raw = Alpaca historical prices. Paper trading only.")
@@ -42,13 +57,14 @@ summary = pd.DataFrame(
         {
             "signal": name,
             "verdict": s["verdict"],
+            "comparison": s.get("comparison", "per_trade"),
             "ticker": s["ticker"],
             "n_fires": s["n_fires"],
             "win rate": f"{s['win_rate']:.0%}",
-            f"avg excess vs {s['benchmark']} per trade": f"{s['avg_excess_vs_benchmark']:.2%}",
+            f"vs {s['benchmark']}": vs_benchmark(s, s),
             "Sharpe": round(s["sharpe"], 2),
             "max drawdown": f"{s['max_drawdown']:.0%}",
-            "out-of-sample avg excess": f"{s['out_of_sample']['avg_excess_vs_benchmark']:.2%}",
+            f"out-of-sample vs {s['benchmark']}": vs_benchmark(s, s["out_of_sample"]),
         }
         for name, s in results.items()
     ]
@@ -71,10 +87,25 @@ for name, s in results.items():
             f"{s['cost_bps']} bps cost per side, tested {s['test_start']} to {s['test_end']}, "
             f"data: {s.get('data_source', 'sample')}."
         )
-        split = pd.DataFrame(
-            {"in-sample": s["in_sample"], "out-of-sample": s["out_of_sample"]}
-        ).T[["n_fires", "n_trades", "win_rate", "avg_excess_vs_benchmark", "sharpe"]]
-        st.dataframe(split.round(3), width="stretch")
+        periods = {"in-sample": s["in_sample"], "out-of-sample": s["out_of_sample"]}
+        if is_timing(s):
+            st.write(
+                f"Comparison: timing. Trades {s['benchmark']} itself, so it is judged on Sharpe "
+                f"vs {s['benchmark']} buy and hold over the same dates, in both periods."
+            )
+            split = pd.DataFrame(periods).T[["n_fires", "n_trades", "win_rate", "sharpe"]].round(3)
+            split[f"Sharpe vs {s['benchmark']} buy and hold"] = [
+                f"{p['sharpe']:.2f} vs {p['benchmark_sharpe']:.2f}" for p in periods.values()
+            ]
+        else:
+            st.write(
+                f"Comparison: per trade. Each trade's net return vs {s['benchmark']} "
+                f"over the same holding window, in both periods."
+            )
+            split = pd.DataFrame(periods).T[
+                ["n_fires", "n_trades", "win_rate", "avg_excess_vs_benchmark", "sharpe"]
+            ].round(3)
+        st.dataframe(split, width="stretch")
         png = RESULTS_DIR / name / "equity_curve.png"
         if png.exists():
             st.image(str(png), caption=f"Growth of $1: {name} vs {s['benchmark']}")

@@ -8,7 +8,8 @@ To use real prices downloaded from Alpaca (see backtesting/alpaca_data.py):
 
     python -m backtesting.engine --data raw
 
-That runs every signal in signals.ACTIVE_SIGNALS and writes, per signal:
+That runs every trade signal in signals.ACTIVE_SIGNALS (filters are skipped,
+see signal_role) and writes, per signal:
     backtesting/results/<signal_name>/stats.json
     backtesting/results/<signal_name>/equity_curve.png
 
@@ -78,6 +79,21 @@ def signal_params(signal_fn) -> dict:
     return {"ticker": ticker, "direction": direction, "hold_days": hold_days}
 
 
+def signal_role(signal_fn) -> str:
+    """Read ROLE from the signal's module: "trade" (the default) or "filter".
+
+    A trade signal is backtested on its own. A filter only switches trade signals
+    on and off, so the engine never trades it alone and it needs no INSTRUMENT,
+    DIRECTION or HOLD_DAYS.
+    Example: a VIX filter module sets ROLE = "filter" and returns True on days VIX < 30.
+    """
+    module = sys.modules[signal_fn.__module__]
+    role = getattr(module, "ROLE", "trade")
+    if role not in ("trade", "filter"):
+        raise ValueError(f"{signal_fn.__module__}: ROLE must be 'trade' or 'filter', got {role!r}")
+    return role
+
+
 def _fires_from_signal(signal: pd.Series) -> pd.Series:
     """Turn a signal into True/False fires.
 
@@ -110,7 +126,9 @@ def _sharpe(daily_returns: pd.Series) -> float:
     return float(daily_returns.mean() / std * np.sqrt(TRADING_DAYS_PER_YEAR))
 
 
-def _period_stats(daily: pd.Series, bench_px: pd.Series, trades: pd.DataFrame, n_fires: int) -> dict:
+def _period_stats(
+    daily: pd.Series, bench_px: pd.Series, bench_daily: pd.Series, trades: pd.DataFrame, n_fires: int
+) -> dict:
     """Stats for one slice of time (full, in-sample, or out-of-sample)."""
     equity = (1 + daily).cumprod()
     total_return = float(equity.iloc[-1] - 1) if len(equity) else 0.0
@@ -125,6 +143,7 @@ def _period_stats(daily: pd.Series, bench_px: pd.Series, trades: pd.DataFrame, n
         "total_return": total_return,
         "benchmark_return": bench_return,
         "sharpe": _sharpe(daily),
+        "benchmark_sharpe": _sharpe(bench_daily),  # benchmark buy and hold over the same dates
         "max_drawdown": _max_drawdown(equity),
     }
 
@@ -148,6 +167,26 @@ def run_backtest(
 
     If the signal fires again while we are still holding (before the exit day), that fire is
     counted in n_fires but no second trade is opened (n_trades stays the same).
+
+    How the signal is compared with the benchmark depends on what it trades
+    (stats["comparison"]):
+
+    "per_trade" (ticker != benchmark): each trade's net return is compared with the
+        benchmark's move over the same holding window. Beating the benchmark means
+        avg_excess_vs_benchmark > 0 both in-sample and out-of-sample.
+        Example: long XOM for 5 days nets +1.8% while XLE moves +0.5%, so that
+        trade's excess is +1.3%.
+
+    "timing" (ticker == benchmark): per-trade excess is meaningless here, because
+        every trade's excess is exactly minus the round-trip cost (-0.10% at 5 bps).
+        The signal is judged on the whole period instead: beating the benchmark
+        means a higher Sharpe than benchmark buy and hold over the same dates,
+        both in-sample and out-of-sample.
+        Example: an XLE trend signal with in-sample Sharpe 0.62 vs XLE 0.48 and
+        out-of-sample Sharpe 0.71 vs XLE 0.55 beats the benchmark.
+
+    In both modes the verdict also needs n_fires >= MIN_FIRES, and a Sharpe above
+    SUSPICIOUS_SHARPE gives REVIEW instead of PASS.
     """
     if direction not in ("long", "short"):
         raise ValueError("direction must be 'long' or 'short'")
@@ -155,6 +194,7 @@ def run_backtest(
         raise ValueError("hold_days must be at least 1")
     sign = 1 if direction == "long" else -1
     cost = cost_bps / 10_000
+    comparison = "timing" if ticker == benchmark else "per_trade"
 
     prices = data["prices"].sort_index()
     px = prices[ticker]
@@ -203,13 +243,20 @@ def run_backtest(
     oos = pd.Timestamp(out_of_sample_start)
     is_mask = dates < oos
     trade_is = trades["fire_date"] < oos if len(trades) else pd.Series(dtype=bool)
-    full = _period_stats(daily, bench_px, trades, len(fire_dates))
-    in_sample = _period_stats(daily[is_mask], bench_px[is_mask], trades[trade_is], (fire_dates < oos).sum())
-    out_sample = _period_stats(daily[~is_mask], bench_px[~is_mask], trades[~trade_is], (fire_dates >= oos).sum())
+    bench_daily = bench_px.pct_change().fillna(0.0)
+    full = _period_stats(daily, bench_px, bench_daily, trades, len(fire_dates))
+    in_sample = _period_stats(daily[is_mask], bench_px[is_mask], bench_daily[is_mask],
+                              trades[trade_is], (fire_dates < oos).sum())
+    out_sample = _period_stats(daily[~is_mask], bench_px[~is_mask], bench_daily[~is_mask],
+                               trades[~trade_is], (fire_dates >= oos).sum())
 
     passes_min_fires = full["n_fires"] >= config.MIN_FIRES
     suspicious = full["sharpe"] > config.SUSPICIOUS_SHARPE
-    beats_bench = in_sample["avg_excess_vs_benchmark"] > 0 and out_sample["avg_excess_vs_benchmark"] > 0
+    if comparison == "timing":
+        beats_bench = (in_sample["sharpe"] > in_sample["benchmark_sharpe"]
+                       and out_sample["sharpe"] > out_sample["benchmark_sharpe"])
+    else:
+        beats_bench = in_sample["avg_excess_vs_benchmark"] > 0 and out_sample["avg_excess_vs_benchmark"] > 0
     if not passes_min_fires or not beats_bench:
         verdict = "REJECT"
     elif suspicious:
@@ -221,6 +268,7 @@ def run_backtest(
         "signal": getattr(signal_fn, "__module__", "unknown").split(".")[-1],
         "ticker": ticker,
         "benchmark": benchmark,
+        "comparison": comparison,
         "direction": direction,
         "hold_days": hold_days,
         "cost_bps": cost_bps,
@@ -275,6 +323,10 @@ def main() -> None:
 
     data = _clip_to_test_window(load_data(args.data))
     for name, signal_fn in ACTIVE_SIGNALS.items():
+        if signal_role(signal_fn) == "filter":
+            # Tested through the trade signals that apply it, never on its own.
+            print(f"{name}: filter, not traded alone")
+            continue
         params = signal_params(signal_fn)  # INSTRUMENT, DIRECTION, HOLD_DAYS from the handoff sheet
         try:
             result = run_backtest(
@@ -296,11 +348,20 @@ def main() -> None:
         result["stats"]["data_source"] = args.data
         save_results(name, result)
         s = result["stats"]
+        if s["comparison"] == "timing":
+            vs_bench = (
+                f"is_sharpe={s['in_sample']['sharpe']:.2f} vs {s['benchmark']} {s['in_sample']['benchmark_sharpe']:.2f} "
+                f"oos_sharpe={s['out_of_sample']['sharpe']:.2f} vs {s['benchmark']} "
+                f"{s['out_of_sample']['benchmark_sharpe']:.2f}"
+            )
+        else:
+            vs_bench = (
+                f"avg_excess_vs_{s['benchmark']}={s['avg_excess_vs_benchmark']:.2%} "
+                f"oos_avg_excess={s['out_of_sample']['avg_excess_vs_benchmark']:.2%}"
+            )
         print(
-            f"{name}: verdict={s['verdict']} n_fires={s['n_fires']} n_trades={s['n_trades']} "
-            f"win_rate={s['win_rate']:.1%} sharpe={s['sharpe']:.2f} "
-            f"avg_excess_vs_{s['benchmark']}={s['avg_excess_vs_benchmark']:.2%} "
-            f"oos_avg_excess={s['out_of_sample']['avg_excess_vs_benchmark']:.2%}"
+            f"{name}: verdict={s['verdict']} comparison={s['comparison']} n_fires={s['n_fires']} "
+            f"n_trades={s['n_trades']} win_rate={s['win_rate']:.1%} sharpe={s['sharpe']:.2f} {vs_bench}"
         )
         print(f"  wrote {config.RESULTS_DIR / name}/stats.json and equity_curve.png")
 
