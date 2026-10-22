@@ -8,6 +8,7 @@ To add a signal: import its module and add one line, for example
 """
 
 from signals import oil_inventory_surprise
+from signals import xle_trend_200d
 
 ACTIVE_SIGNALS = {
     "oil_inventory_surprise": oil_inventory_surprise.compute_signal,
