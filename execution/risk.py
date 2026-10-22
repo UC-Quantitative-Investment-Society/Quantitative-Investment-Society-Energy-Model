@@ -19,8 +19,10 @@ def size_order(portfolio_value: float, price: float, target_dollars: float | Non
     Example: size_order(1_000_000, 100.0, target_dollars=80_000) -> still 500 (capped).
     Example: size_order(1_000_000, 100.0, target_dollars=20_000) -> 200.
     """
-    if portfolio_value <= 0 or price <= 0:
-        raise ValueError("portfolio_value and price must be positive")
+    if portfolio_value <= 0:
+        raise ValueError("portfolio_value must be positive")
+    if price <= 0:
+        raise ValueError("price must be greater than 0")
     cap_dollars = portfolio_value * MAX_POSITION_PCT
     dollars = cap_dollars if target_dollars is None else min(target_dollars, cap_dollars)
     return max(0, math.floor(dollars / price))
