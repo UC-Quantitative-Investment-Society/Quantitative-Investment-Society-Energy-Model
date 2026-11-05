@@ -1,6 +1,14 @@
 """Manufacturing Thermal Activity Index (MTAI).
 
-Hypothesis: IF satellite imagery reveals an unexpectedly large, repeatable rise in cloud-free, weather-adjusted surface temperature over thermally exposed activity zones at the GE Vernova Greenville site, THEN future turbine manufacturing/testing throughput and, potentially, GEV equipment earnings expectations may be higher than anticipated, BECAUSE additional manufacturing and full-load testing may leave a detectable industrial thermal footprint before quarterly results are announced. If this information is not priced in, positive subsequent GEV excess stock returns may follow.
+Hypothesis: IF satellite imagery reveals an unexpectedly large, 
+repeatable rise in cloud-free, weather-adjusted surface temperature 
+over thermally exposed activity zones at the GE Vernova Greenville site, 
+THEN future turbine manufacturing/testing throughput and, potentially, 
+GEV equipment earnings expectations may be higher than anticipated, 
+BECAUSE additional manufacturing and full-load testing may leave a 
+detectable industrial thermal footprint before quarterly results are 
+announced. If this information is not priced in, positive subsequent 
+GEV excess stock returns may follow.
 
 Output type: <bool>
   bool  -> True on dates the condition is met, False otherwise.
@@ -22,7 +30,9 @@ RELEASE_DAYS = 16
 
 
 def compute_signal(data: dict) -> pd.Series:
-    """TODO: describe the condition in one sentence.
+    """"True when the facility - comparisons' roof 
+        temperatures spread is more than <THRESHOLD> 
+        std devs above its trailing <WINDOW>-scene mean.
 
     Output type: <bool>
     """
