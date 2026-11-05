@@ -16,7 +16,9 @@ INSTRUMENT = "GEV"
 DIRECTION = "long"
 HOLD_DAYS = 60
 THRESHOLD = 1.0  # pilot value
-SCENES = 2 # pilot value
+WINDOW = 12 
+RELEASE_DAYS = 16
+
 
 
 def compute_signal(data: dict) -> pd.Series:
@@ -24,4 +26,25 @@ def compute_signal(data: dict) -> pd.Series:
 
     Output type: <bool>
     """
-    raise NotImplementedError("Fill this in from the handoff sheet")
+    mtai = pd.read_csv("data/sample/mtai.csv", index_col="date", parse_dates=True)
+
+   # Averaging out all three components of our comparison (heat_gap)
+    comps = mtai[["comp1", "comp2", "comp3"]]
+    avg = comps.mean(axis=1)
+    heat_gap = mtai["facility"] - avg
+
+   # Calculating the last valid heat gaps' avg
+    last_gaps = heat_gap.shift(1).rolling(WINDOW, min_periods=12)
+    last_gaps_avg = last_gaps.mean()
+
+   # Calculating heat surprise with above
+    heat_surprise = heat_gap - last_gaps_avg
+
+   # Calculating for the trigger
+    last_gaps_std = last_gaps.std()
+
+    fires = (heat_surprise > THRESHOLD * last_gaps_std).astype(int)
+    fires.index = fires.index + pd.Timedelta(days=RELEASE_DAYS)
+
+    fires.name = "mtai_heat_surprise"
+    return fires.astype(bool)
