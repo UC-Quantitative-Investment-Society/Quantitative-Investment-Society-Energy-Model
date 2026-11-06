@@ -30,14 +30,13 @@ RELEASE_DAYS = 16
 
 
 def compute_signal(data: dict) -> pd.Series:
-    """"True when the facility - comparisons' roof 
+    """True when the facility - comparisons' roof 
         temperatures spread is more than <THRESHOLD> 
         std devs above its trailing <WINDOW>-scene mean.
 
     Output type: <bool>
     """
-    mtai = pd.read_csv("data/sample/mtai.csv", index_col="date", parse_dates=True)
-
+    mtai = data["mtai"]
    # Averaging out all three components of our comparison (heat_gap)
     comps = mtai[["comp1", "comp2", "comp3"]]
     avg = comps.mean(axis=1)
