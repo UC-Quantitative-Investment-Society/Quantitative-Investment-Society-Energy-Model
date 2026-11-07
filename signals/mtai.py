@@ -24,7 +24,7 @@ INSTRUMENT = "GEV"
 DIRECTION = "long"
 HOLD_DAYS = 60
 THRESHOLD = 1.0  # pilot value
-WINDOW = 12 
+WINDOW = 24 
 RELEASE_DAYS = 16
 
 
@@ -43,7 +43,7 @@ def compute_signal(data: dict) -> pd.Series:
     heat_gap = mtai["facility"] - avg
 
    # Calculating the last valid heat gaps' avg
-    last_gaps = heat_gap.shift(1).rolling(WINDOW, min_periods=12)
+    last_gaps = heat_gap.shift(1).rolling(WINDOW, min_periods=24)
     last_gaps_avg = last_gaps.mean()
 
    # Calculating heat surprise with above
