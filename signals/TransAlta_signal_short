@@ -1,0 +1,74 @@
+"""ta_cpx_pair_short.
+ 
+Hypothesis: TransAlta (TA) and Capital Power (CPX) are both Alberta power
+generators driven by the same pool price, gas costs and provincial policy, so
+their prices normally move together. When TA rises unusually far above where
+CPX says it should be while the two stocks are still tracking each other, the
+gap tends to close and TA tends to fall back.
+ 
+Output type: bool. True on dates when the spread z-score is above +2, the
+60-day return correlation is at least 0.5, and neither company is within 2
+trading days of its earnings results. False otherwise.
+ 
+This is the short leg. The long leg (z below -2) is ta_cpx_pair_long.py,
+because the engine takes one DIRECTION per signal.
+ 
+After the file works, register it in signals/__init__.py (ACTIVE_SIGNALS).
+"""
+ 
+import numpy as np
+import pandas as pd
+ 
+ROLE = "trade"
+ 
+# Copied from the signal brief. Never tune them yourself.
+INSTRUMENT = "TA"
+DIRECTION = "short"
+HOLD_DAYS = 20  # the brief's max hold, in trading days
+THRESHOLD = 2.0  # entry |z|: fire when z > +THRESHOLD
+ 
+LOOKBACK = 60  # trading days for beta, z-score and correlation
+MIN_CORR = 0.5  # no entries when the 60-day correlation is below this
+BLACKOUT_DAYS = 2  # no entries within this many trading days of earnings
+ 
+ 
+def _earnings_blackout(data: dict, index: pd.DatetimeIndex) -> pd.Series:
+    """True on trading days within BLACKOUT_DAYS of either company's results."""
+    if "earnings" not in data:
+        raise KeyError(
+            'data["earnings"] is missing. The brief requires an earnings '
+            "blackout, so this signal cannot run without TA and CPX results dates."
+        )
+    raw = data["earnings"][["TA", "CPX"]].to_numpy().ravel()
+    dates = pd.to_datetime(pd.Series(raw).dropna())
+ 
+    blackout = np.zeros(len(index), dtype=bool)
+    for p in index.searchsorted(dates):  # first trading day on or after the date
+        blackout[max(p - BLACKOUT_DAYS, 0) : p + BLACKOUT_DAYS + 1] = True
+    return pd.Series(blackout, index=index)
+ 
+ 
+def compute_signal(data: dict) -> pd.Series:
+    """True when TA is stretched above CPX, the pair still tracks, and no earnings are near.
+ 
+    Output type: bool.
+ 
+    data["prices"] must have columns "TA" and "CPX" (adjusted closes, CAD).
+    data["earnings"] must have columns "TA" and "CPX" of results dates.
+    """
+    prices = data["prices"]
+    px = prices[["TA", "CPX"]].dropna()  # keep only days both traded
+ 
+    a, b = np.log(px["TA"]), np.log(px["CPX"])
+    ra, rb = a.diff(), b.diff()
+ 
+    beta = ra.rolling(LOOKBACK).cov(rb) / rb.rolling(LOOKBACK).var()
+    s = a - beta * b
+    z = (s - s.rolling(LOOKBACK).mean()) / s.rolling(LOOKBACK).std()
+    rho = ra.rolling(LOOKBACK).corr(rb)
+ 
+    blackout = _earnings_blackout(data, px.index)
+ 
+    # Comparisons with NaN are False, so the warm-up days never fire.
+    fires = (z > THRESHOLD) & (rho >= MIN_CORR) & ~blackout
+    return fires.reindex(prices.index, fill_value=False).astype(bool)
